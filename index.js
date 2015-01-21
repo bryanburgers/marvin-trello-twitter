@@ -10,7 +10,8 @@ console.log("Starting.");
 console.log("Now: " + moment.tz(process.env.TIMEZONE).format());
 console.log("Schedule: " + process.env.SCHEDULE);
 var s = schedule(process.env.SCHEDULE, process.env.TIMEZONE);
-var notifier = s.getNotifier(null, 10000).on('scheduled', function(scheduled, actual) {
+var notifier = s.getNotifier(moment.tz(process.env.TIMEZONE), 10000);
+notifier.on('scheduled', function(scheduled, actual) {
 	console.log("Tweeting. Scheduled: " + scheduled.format() + " Actual: " + actual.format());
 	findAndTweet().catch(function(err) {
 		console.log(err.stack);

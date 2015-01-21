@@ -6,8 +6,8 @@ var moment = require('moment-timezone');
 var EventEmitter = require('events').EventEmitter;
 var util = require('util');
 
-function parseSchedule(dates) {
-	var s = new Schedule();
+function parseSchedule(dates, tz) {
+	var s = new Schedule(tz);
 	s.parse(dates);
 	return s;
 }
@@ -69,7 +69,7 @@ Schedule.prototype.next = function(now) {
 };
 
 Schedule.prototype.getNotifier = function(start, timeout) {
-	return new ScheduleNotifier(this, start || moment(), timeout);
+	return new ScheduleNotifier(this, start || moment.tz(this.tz), timeout);
 };
 
 function ScheduleNotifier(schedule, start, timeout) {
@@ -88,8 +88,7 @@ util.inherits(ScheduleNotifier, EventEmitter);
 
 ScheduleNotifier.prototype._handleInterval = function() {
 	var self = this;
-	var now = moment();
-	now.tz(self.schedule.tz);
+	var now = moment.tz(self.schedule.tz);
 	var formattedNow = now.format();
 	var next = this.schedule.next(this.startTime);
 	if (next) {
