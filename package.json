@@ -1,0 +1,21 @@
+{
+  "name": "marvin",
+  "version": "1.0.0",
+  "description": "Automate Twitter using Trello",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test"
+  },
+  "author": "Bryan Burgers <bryan@burgers.io>",
+  "license": "MIT",
+  "dependencies": {
+    "bluebird": "^2.7.1",
+    "moment-timezone": "^0.3.0",
+    "node-trello": "^1.0.1",
+    "twitter": "^1.0.3"
+  },
+  "devDependencies": {
+    "mocha": "^2.1.0",
+    "should": "^4.6.1"
+  }
+}
