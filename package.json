@@ -10,8 +10,10 @@
   "license": "MIT",
   "dependencies": {
     "bluebird": "^2.7.1",
+    "cheerio": "^0.18.0",
     "moment-timezone": "^0.3.0",
     "node-trello": "^1.0.1",
+    "request": "^2.52.0",
     "twitter": "^1.0.3"
   },
   "devDependencies": {

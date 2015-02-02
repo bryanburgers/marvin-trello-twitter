@@ -46,6 +46,12 @@ setInterval(function() {
 	});
 }, 30000);
 
+setInterval(function() {
+	core.urlsToCards().catch(function(err) {
+		console.log(err.stack);
+	});
+}, 30000);
+
 // An HTTP server, so that Heroku lets us live on their environment.
 var server = http.createServer(function(req, res) {
 	if (req.url === '/') {

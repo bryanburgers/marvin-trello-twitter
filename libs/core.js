@@ -4,6 +4,7 @@ exports.withOptions = withOptions;
 
 var moment = require('moment-timezone');
 var Promise = require('bluebird');
+var metadata = require('./metadata');
 
 function withOptions(boardId, t, tw, timezone) {
 
@@ -24,6 +25,10 @@ function withOptions(boardId, t, tw, timezone) {
 				return null;
 			}
 		});
+	}
+
+	function getAllCards(boardId) {
+		return t.getAsync('/1/boards/' + boardId + '/cards');
 	}
 
 	function createList(boardId, listName, listPos) {
@@ -187,8 +192,40 @@ function withOptions(boardId, t, tw, timezone) {
 		});
 	}
 
+	function urlsToCards() {
+		function cardNeedsUpdating(card) {
+			return /^https?:\/\/[^ ]+$/.test(card.name);
+		}
+
+		function updateCard(card) {
+			var originalUrl = card.name;
+
+			return metadata(originalUrl).then(function(metadata) {
+				var cardTitle = metadata.title + ' | ' + metadata.uri.hostname;
+				var cardBody = '\u00ab' + metadata.title + '\u00bb\n\n' + originalUrl;
+
+				var update = {
+					name: cardTitle
+				};
+
+				if (!card.desc || card.desc === '') {
+					update.desc = cardBody;
+				}
+
+				return t.putAsync('/1/cards/' + card.id, update);
+			});
+		}
+
+		return getAllCards(boardId).then(function(cards) {
+			return cards.filter(cardNeedsUpdating);
+		}).then(function(cards) {
+			return Promise.map(cards, updateCard);
+		});
+	}
+
 	return {
 		tweetFromQueue: tweetFromQueue,
-		tweetScheduled: tweetScheduled
+		tweetScheduled: tweetScheduled,
+		urlsToCards: urlsToCards
 	};
 }
