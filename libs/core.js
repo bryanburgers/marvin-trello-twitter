@@ -39,7 +39,7 @@ function withOptions(boardId, t, tw, timezone) {
 	}
 
 	function moveCardToList(card, list) {
-		return t.putAsync('/1/cards/' + card.id + '/idList', { value: list.id });
+		return t.putAsync('/1/cards/' + card.id, { idList: list.id, pos: 'bottom' });
 	}
 
 	function addCommentToCard(card, comment) {
@@ -142,7 +142,7 @@ function withOptions(boardId, t, tw, timezone) {
 		return filtered;
 	}
 
-	function tweetCard(card, destinationList) {
+	function tweetCard(card, originalList, destinationList) {
 		return tw.postAsync('statuses/update', {
 			status: card.desc
 		}).then(function(result) {
@@ -150,6 +150,11 @@ function withOptions(boardId, t, tw, timezone) {
 			var successText = 'https://twitter.com/bryanburgers/status/' + result[0].id_str;
 			successText += "\n";
 			successText += moment().tz(timezone).format();
+
+			var recycle = card.labels.some(function(label) { return label.name === 'Recycle'; });
+			if (recycle) {
+				destinationList = originalList;
+			}
 
 			return addCommentToCard(card, successText)
 				.then(function() {
@@ -161,33 +166,35 @@ function withOptions(boardId, t, tw, timezone) {
 	}
 
 	function tweetFromQueue() {
-		var activeCard = getQueueList()
+		var queueList = getQueueList();
+		var activeCard = queueList
 			.then(getCards)
 			.then(findFirstActiveCard);
 		var postedList = createPostedList();
 
-		return Promise.join(activeCard, postedList, function(activeCard, postedList) {
+		return Promise.join(activeCard, queueList, postedList, function(activeCard, queueList, postedList) {
 			if (!activeCard) {
 				console.log("Nothing to post.");
 				// Nothing to post.
 				return;
 			}
 
-			return tweetCard(activeCard, postedList);
+			return tweetCard(activeCard, queueList, postedList);
 		});
 	}
 
 	function tweetScheduled() {
-		var scheduledCards = getScheduledList()
+		var scheduledList = getScheduledList();
+		var scheduledCards = scheduledList
 			.then(getCards)
 			.then(filterActiveCards)
 			.then(filterScheduledCards);
 
 		var postedList = createPostedList();
 
-		return Promise.join(scheduledCards, postedList, function(scheduledCards, postedList) {
+		return Promise.join(scheduledList, scheduledCards, postedList, function(scheduledList, scheduledCards, postedList) {
 			return Promise.map(scheduledCards, function(scheduledCard) {
-				return tweetCard(scheduledCard, postedList);
+				return tweetCard(scheduledCard, scheduledList, postedList);
 			});
 		});
 	}
