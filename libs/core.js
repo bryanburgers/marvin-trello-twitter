@@ -202,7 +202,7 @@ function withOptions(boardId, t, tw, timezone) {
 
 			return metadata(originalUrl).then(function(metadata) {
 				var cardTitle = metadata.title + ' | ' + metadata.uri.hostname;
-				var cardBody = '\u00ab' + metadata.title + '\u00bb\n\n' + originalUrl;
+				var cardBody = '\u00ab' + metadata.title + '\u00bb ' + originalUrl;
 
 				var update = {
 					name: cardTitle
