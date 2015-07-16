@@ -7,7 +7,8 @@ var Promise = require('bluebird');
 var request = Promise.promisify(require('request'));
 
 function metadata(url) {
-	return request(url).then(function(result) {
+	var jar = request.jar();
+	return request({ url: url, jar: jar }).then(function(result) {
 		var response = result[0];
 		var body = result[1];
 
