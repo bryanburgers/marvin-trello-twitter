@@ -2,6 +2,8 @@
 
 exports.withOptions = withOptions;
 
+const CALLBACK_URL_ID = '037bda54-d1c6-11e5-8c95-771a81ec3a2e';
+
 var moment = require('moment-timezone');
 var Promise = require('bluebird');
 var metadata = require('./metadata');
@@ -199,30 +201,60 @@ function withOptions(boardId, t, tw, timezone) {
 		});
 	}
 
-	function urlsToCards() {
-		function cardNeedsUpdating(card) {
-			return /^https?:\/\/[^ ]+$/.test(card.name);
-		}
+	function cardNeedsUpdating(card) {
+		return /^https?:\/\/[^ ]+$/.test(card.name);
+	}
 
-		function updateCard(card) {
-			var originalUrl = card.name;
-
-			return metadata(originalUrl).then(function(metadata) {
-				var cardTitle = metadata.title + ' | ' + metadata.uri.hostname;
-				var cardBody = '\u00ab' + metadata.title + '\u00bb ' + originalUrl;
-
-				var update = {
-					name: cardTitle
-				};
-
-				if (!card.desc || card.desc === '') {
-					update.desc = cardBody;
+	function maybeUpdateCard(card) {
+		return Promise.resolve()
+			.then(function() {
+				if (cardNeedsUpdating(card)) {
+					return updateCard(card);
 				}
-
-				return t.putAsync('/1/cards/' + card.id, update);
 			});
-		}
+	}
 
+	function updateCard(card) {
+		var originalUrl = card.name;
+
+		return metadata(originalUrl).then(function(metadata) {
+			var cardTitle = metadata.title + ' | ' + metadata.uri.hostname;
+			var cardBody = '\u00ab' + metadata.title + '\u00bb ' + originalUrl;
+
+			var update = {
+				name: cardTitle
+			};
+
+			if (!card.desc || card.desc === '') {
+				update.desc = cardBody;
+			}
+
+			return t.putAsync('/1/cards/' + card.id, update);
+		});
+	}
+
+	function ensureWebhook(callbackURL) {
+	    function createWebhook() {
+	        return t.postAsync('/1/webhooks', {
+	            description: CALLBACK_URL_ID,
+	            callbackURL: callbackURL,
+	            idModel: boardId
+	        });
+	    }
+
+	    return t.getAsync(`/1/tokens/${t.token}/webhooks`)
+	        .then(function(hooks) {
+	            return hooks.filter(hook => hook.idModel == boardId && hook.callbackURL == callbackURL && hook.description == CALLBACK_URL_ID);
+	        })
+	        .then(function(hooks) {
+	            if (hooks.length == 0) {
+	                console.log("Creating webhook");
+	                return createWebhook();
+	            }
+	        });
+	}
+
+	function urlsToCards() {
 		return getAllCards(boardId).then(function(cards) {
 			return cards.filter(cardNeedsUpdating);
 		}).then(function(cards) {
@@ -233,6 +265,8 @@ function withOptions(boardId, t, tw, timezone) {
 	return {
 		tweetFromQueue: tweetFromQueue,
 		tweetScheduled: tweetScheduled,
-		urlsToCards: urlsToCards
+		urlsToCards: urlsToCards,
+		maybeUpdateCard: maybeUpdateCard,
+		ensureWebhook: ensureWebhook
 	};
 }

@@ -1,5 +1,7 @@
 "use strict";
 
+var express = require('express');
+var bodyParser = require('body-parser');
 var Core = require('./libs/core');
 var http = require('http');
 var moment = require('moment-timezone');
@@ -40,6 +42,8 @@ notifier.on('scheduled', function(scheduled, actual) {
 	});
 });
 
+core.ensureWebhook(process.env.ORIGIN + '/trello-postback');
+
 setInterval(function() {
 	core.tweetScheduled().catch(function(err) {
 		console.log(err.stack);
@@ -52,22 +56,41 @@ setInterval(function() {
 	});
 }, 30000);
 
-// An HTTP server, so that Heroku lets us live on their environment.
-var server = http.createServer(function(req, res) {
-	if (req.url === '/') {
-		var next = notifier.next();
-		res.writeHead(200, { 'Content-Type': 'text/html; charset=UTF-8' });
-		res.write('<h1>OK</h1>');
-		res.write('<p>' + next.format() + '</p>');
-		res.write('<p>' + next.fromNow() + '</p>');
-		res.end();
+var port = process.env.PORT || 2222;
+var app = express();
+app.use(bodyParser.json());
+app.get('/', function(req, res) {
+	let next = notifier.next();
+	let result = `<h1>OK</h1><p>${next.format()}</p><p>${next.fromNow()}</p>`;
+	res.send(result);
+});
+app.get('/trello-postback', function(req, res) {
+	res.send({
+		status: 'ok'
+	});
+});
+app.post('/trello-postback', function(req, res) {
+	let action = req.body.action;
+
+	if (!action) {
+		res.status(400).send({ status: 'error', message: 'Missing action' });
+		return;
+	}
+
+	if (action.type == "createCard" || action.type == "updateCard") {
+		core.maybeUpdateCard(action.data.card)
+			.then(function() {
+				res.send({ status: 'ok', message: 'Success' });
+			})
+			.catch(function(err) {
+				console.log(err.stack);
+				res.status(500).send({ status: 'error', message: err });
+			});
 	}
 	else {
-		res.writeHead(404, { 'Content-Type': 'text/html; charset=UTF-8' });
-		res.end('<h1>404 Not Found</h1>');
+		res.send({ status: 'ok', message: `Ignoring action of type ${action.type}` });
 	}
 });
-var port = process.env.PORT || 2222;
-server.listen(port, function() {
+app.listen(port, function() {
 	console.log("Listening on port " + port);
 });
